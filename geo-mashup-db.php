@@ -197,8 +197,11 @@ class GeoMashupDB {
 
 		// Do nothing if meta_key is not a known location field
 		$location_keys = array();
-		if ( 'true' == $geo_mashup_options->get( 'overall', 'copy_geodata' ) )
+		$is_copy_geodata_on = ( 'true' === $geo_mashup_options->get( 'overall', 'copy_geodata' ) );
+		$copy_imported_geodata = false;
+		if ( $is_copy_geodata_on ) {
 			$location_keys = array_merge( $location_keys, array( 'geo_latitude', 'geo_longitude', 'geo_lat_lng' ) );
+		}
 		$import_custom_keys = preg_split( '/\s*,\s*/', trim( $geo_mashup_options->get( 'overall', 'import_custom_field' ) ) );
 		$location_keys = array_merge( $location_keys, $import_custom_keys );
 		if ( ! in_array( $meta_key, $location_keys ) ) 
@@ -261,6 +264,9 @@ class GeoMashupDB {
 					update_metadata( $meta_type, $object_id, 'geocoding_error', self::$geocode_error->get_error_message() );
 					return;
 				}
+				if ( $is_copy_geodata_on ) {
+					$copy_imported_geodata = true;
+				}
 			}
 		}
 
@@ -275,7 +281,10 @@ class GeoMashupDB {
 		self::remove_geodata_sync_hooks();
 		// Use geo date if it exists
 		$geo_date = get_metadata( $meta_type, $object_id, 'geo_date', true );
-		self::set_object_location( $meta_type, $object_id, $location, null, $geo_date );
+		$location_id = self::set_object_location( $meta_type, $object_id, $location, null, $geo_date );
+		if ( $copy_imported_geodata ) {
+			self::copy_to_geodata( $meta_type, $object_id, $geo_date, $location_id );
+		}
 		self::add_geodata_sync_hooks();
 	}
 
@@ -826,8 +835,8 @@ class GeoMashupDB {
 
 		// Try GeoCoding services (google, nominatim, geonames) until one gives an answer
 		$results = array();
-		if ( 'google' == substr( $geo_mashup_options->get( 'overall', 'map_api' ), 0, 6 ) ) {
-			// Only try the google service if a google API is selected as the default
+		if ( $geo_mashup_options->get( 'overall', 'google_server_key' ) ) {
+			// Only try the google service if a google server key is present
 			$google_geocoder = new GeoMashupGoogleGeocoder( array( 'language' => $language ) );
 			$results = $google_geocoder->geocode( $query );
 		}
@@ -950,7 +959,7 @@ class GeoMashupDB {
 	private static function make_alternate_reverse_geocoder() {
 		global $geo_mashup_options;
 		// Choose a geocoding service based on the default API in use
-		if ( 'google' == substr( $geo_mashup_options->get( 'overall', 'map_api' ), 0, 6 ) ) {
+		if ( $geo_mashup_options->get( 'overall', 'google_server_key' ) ) {
 			return new GeoMashupGoogleGeocoder();
 		} else if ( 'openlayers' == $geo_mashup_options->get( 'overall', 'map_api' ) ) {
 			return new GeoMashupNominatimGeocoder();
@@ -1644,29 +1653,12 @@ class GeoMashupDB {
 			$limit = '';
 
 		if ( ! $query_args['suppress_filters'] ) {
-			$field_string = apply_filters( 'geo_mashup_locations_fields', $field_string );
-			$table_string = apply_filters( 'geo_mashup_locations_join', $table_string );
-			$where = apply_filters( 'geo_mashup_locations_where', $where );
-			$sort = apply_filters( 'geo_mashup_locations_orderby', $sort );
-			$groupby = apply_filters( 'geo_mashup_locations_groupby', $groupby );
-			$limit = apply_filters( 'geo_mashup_locations_limits', $limit );
-
-			$suppress_post_filters = defined( 'GEO_MASHUP_SUPPRESS_POST_FILTERS' ) && GEO_MASHUP_SUPPRESS_POST_FILTERS;
-			if ( 'post' === $object_name and ! $suppress_post_filters and isset( $GLOBALS['wpml_query_filter'] ) ) {
-				// Ok, we're catering to WPML here. If we ever integrate with a WP_Query object for posts,
-				// this could be made more general
-
-				// Apply post query filters, changing posts table references to our alias
-				$table_string = $GLOBALS['wpml_query_filter']->filter_single_type_join( $table_string, 'any' );
-				$table_string = str_replace( $wpdb->posts . '.', 'o.', $table_string );
-				$where = $GLOBALS['wpml_query_filter']->filter_single_type_where(
-					$where,
-					$GLOBALS['geo_mashup_options']->get( 'overall', 'located_post_types' )
-				);
-				$where = str_replace( $wpdb->posts . '.', 'o.', $where );
-
-				remove_filter( 'get_translatable_documents', array( __CLASS__, 'wpml_filter_get_translatable_documents' ) );
-			}
+			$field_string = apply_filters( 'geo_mashup_locations_fields', $field_string, $query_args );
+			$table_string = apply_filters( 'geo_mashup_locations_join', $table_string, $query_args );
+			$where = apply_filters( 'geo_mashup_locations_where', $where, $query_args );
+			$sort = apply_filters( 'geo_mashup_locations_orderby', $sort, $query_args );
+			$groupby = apply_filters( 'geo_mashup_locations_groupby', $groupby, $query_args );
+			$limit = apply_filters( 'geo_mashup_locations_limits', $limit, $query_args );
 		}
 		
 		$query_string = "SELECT $field_string FROM $table_string $where $groupby $having $sort $limit";

@@ -1,32 +1,6 @@
 <?php
 
-require_once( "sitepress-mock.php" );
-
-/** @group debug */
-class GeoMashup_Unit_Tests extends WP_UnitTestCase {
-
-	const DELTA = 0.0001;
-
-	private $added_filters;
-	private $data;
-
-	function setUp() {
-		parent::setUp();
-		$this->added_filters = array();
-		$this->data = new stdClass();
-	}
-
-	function tearDown() {
-		global $wpdb;
-		parent::tearDown();
-
-		foreach( $this->added_filters as $filter ) {
-			remove_filter( $filter['tag'], $filter['call'], $filter['priority'] );
-		}
-		$wpdb->query( "TRUNCATE TABLE {$wpdb->prefix}geo_mashup_administrative_names" );
-		$wpdb->query( "TRUNCATE TABLE {$wpdb->prefix}geo_mashup_location_relationships" );
-		$wpdb->query( "TRUNCATE TABLE {$wpdb->prefix}geo_mashup_locations" );
-	}
+class GeoMashup_Unit_Tests extends GeoMashupTestCase {
 
 	function test_geo_mashup_class_exists() {
 		$this->assertTrue( class_exists( 'GeoMashup' ), 'The GeoMashup class is missing.' );
@@ -308,53 +282,6 @@ class GeoMashup_Unit_Tests extends WP_UnitTestCase {
 
 		$geo_date = get_user_meta( $user_id, 'geo_date', true );
 		$this->assertFalse( empty( $geo_date ) );
-	}
-
-	/**
-	* issue 607
-	*/
-	function test_auto_post_join() {
-
-		// A query for post locations should honor posts_where and related filters
-		$posts = array(
-			$this->factory->post->create_and_get(),
-			$this->factory->post->create_and_get(),
-			$this->factory->post->create_and_get(),
-		);
-		GeoMashupDB::set_object_location( 
-			'post', 
-			$posts[0]->ID, 
-			$this->rand_location(),
-			$do_lookups = false
-		);
-		GeoMashupDB::set_object_location( 
-			'post', 
-			$posts[1]->ID, 
-			$this->rand_location(),
-			$do_lookups = false
-		);
-		GeoMashupDB::set_object_location( 
-			'post', 
-			$posts[2]->ID, 
-			$this->rand_location(),
-			$do_lookups = false
-		);
-
-		$GLOBALS['wpml_query_filter'] = new SitePressQueryFilterMock( $posts[1]->post_title );
-
-		// An open query should only return post index 1 of the 3
-		$results = GeoMashupDB::get_object_locations();
-		$this->assertEquals( 1, count( $results ) );
-		$this->assertEquals( $posts[1]->ID, $results[0]->object_id );
-
-		// Explicitly suppress post filters
-		$results = GeoMashupDB::get_object_locations( 'suppress_filters=1' );
-		$this->assertEquals( 3, count( $results ) );
-
-		// Disable post filters
-		define( 'GEO_MASHUP_SUPPRESS_POST_FILTERS', true );
-		$results = GeoMashupDB::get_object_locations();
-		$this->assertEquals( 3, count( $results ) );
 	}
 
 	/**
@@ -672,7 +599,35 @@ class GeoMashup_Unit_Tests extends WP_UnitTestCase {
 		$this->assertContains( $found_post->ID, $search->get_the_IDs(), 'Search did not find the target post.' );
 	}
 
-	/**
+    /**
+     * Issue 777
+     */
+	function test_search_map_cat() {
+		require_once GEO_MASHUP_DIR_PATH . '/geo-mashup-search.php';
+
+		$search_args = array(
+			'near_lat' => 45.6181,
+			'near_lng' => 5.226,
+			'object_name' => 'post',
+			'radius' => 0.5,
+			'units' => 'km',
+			'geo_mashup_search_submit' => 'Search',
+            'map_cat' => 'test',
+		);
+
+		$query_args_filter = $this->getMockBuilder('filterMock')->setMethods( array( 'check_args' ) )->getMock();
+		$query_args_filter->expects( $this->once() )
+            ->method( 'check_args' )
+            ->with( $this->arrayHasKey( 'map_cat' ) )
+            ->willReturn( array() );
+
+		add_filter( 'geo_mashup_search_query_args', array( $query_args_filter, 'check_args' ) );
+		$search = new GeoMashupSearch( array() );
+		$search->query( $search_args );
+        remove_filter( 'geo_mashup_search_query_args', array( $query_args_filter, 'check_args' ) );
+	}
+
+    /**
 	 * Issue 639
 	 */
 	function test_wp_query() {
@@ -757,7 +712,7 @@ class GeoMashup_Unit_Tests extends WP_UnitTestCase {
 		$unlocated_user_ids = $this->factory->user->create_many( 2 );
 		$nv_user_id = $this->factory->user->create();
 		$nv_location = $this->get_nv_test_location();
-		GeoMashupDB::set_object_location( 'user', $nv_user_id, $nv_location, false );
+		GeoMashupDB::set_object_location( 'user',$nv_user_id, $nv_location, false );
 
 		$location_query = new GM_Location_Query( array(
 			'minlat' => $nv_location->lat - 1,
@@ -894,35 +849,24 @@ class GeoMashup_Unit_Tests extends WP_UnitTestCase {
 		return array( 'response' => array( 'code' => 200 ), 'body' => '{ "status": "ZERO_RESULTS" }' );
 	}
 
-	private function get_nv_test_location() {
-		$location = GeoMashupDB::blank_location();
-		$location->lat = 40;
-		$location->lng = -119;
-		return $location;
-	}
+	/**
+	 * issue 715
+	 */
+	function test_map_shape() {
+		$post_id = $this->factory->post->create();
+		GeoMashupDB::set_object_location( 'post', $post_id, $this->rand_location(), false );
 
-	private function rand_location( $decimal_places = 2 ) {
-		$factor = pow( 10, $decimal_places );
-		$location = GeoMashupDB::blank_location();
-		$location->lat = rand( -90*$factor, 90*$factor ) / $factor;
-		$location->lng = rand( -180*$factor, 180*$factor ) / $factor;
-		return $location;
-	}
+		$html = GeoMashup::map( 'map_content=global&width=400&height=300px' );
+		$this->assertNotContains( $html, 'padding-bottom' );
 
-	private function generate_rand_located_posts( $count ) {
-		$post_ids = $this->factory->post->create_many( $count );
-		foreach( $post_ids as $post_id ) {
-			GeoMashupDB::set_object_location( 'post', $post_id, $this->rand_location(), false );
-		}
-		return $post_ids;
-	}
+		$html = GeoMashup::map( 'map_content=global&width=40%&height=300&shape=50%' );
+		$this->assertThat( $html, $this->stringContains( 'width: 100%;' ) );
+		$this->assertThat( $html, $this->stringContains( 'height: 0;' ) );
+		$this->assertThat( $html, $this->stringContains( 'padding-bottom: 50%;' ) );
 
-	private function add_action( $tag, $call, $priority = 10, $accepted_args = 1 ) {
-		return $this->add_filter( $tag, $call, $priority, $accepted_args );
-	}
-
-	private function add_filter( $tag, $call, $priority = 10, $accepted_args = 1 ) {
-		$this->added_filters[] = compact( 'tag', 'call', 'priority' );
-		return add_filter( $tag, $call, $priority, $accepted_args );
+		$html = GeoMashup::map( 'map_content=global&width=400px&height=30%&shape=50%' );
+		$this->assertThat( $html, $this->stringContains( 'width: 100%;' ) );
+		$this->assertThat( $html, $this->stringContains( 'height: 0;' ) );
+		$this->assertThat( $html, $this->stringContains( 'padding-bottom: 50%;' ) );
 	}
 }

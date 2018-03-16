@@ -17,7 +17,8 @@ Mapstraction: {
 			navigationControl: false,
 			navigationControlOptions: null,
 			scrollwheel: false,
-			disableDoubleClickZoom: true
+			disableDoubleClickZoom: true,
+			streetViewControl: true
 		};
 
 		// Background color can only be set at construction
@@ -55,6 +56,9 @@ Mapstraction: {
 			if (this.addControlsArgs.overview) {
 				myOptions.overviewMapControl = true;
 				myOptions.overviewMapControlOptions = {opened: true};
+			}
+			if (this.addControlsArgs.street_view === false) {
+				myOptions.streetViewControl = false;
 			}
 		}
 	
@@ -234,6 +238,16 @@ Mapstraction: {
 			myOptions = { overviewMapControl: false };
 			map.setOptions(myOptions);
 			this.addControlsArgs.overview = false;
+		}
+
+		if ('street_view' in args) {
+			map.setOptions( { streetViewControl: true } );
+			this.addControlsArgs.street_view = true;
+		}
+
+		else {
+			map.setOptions( { streetViewControl: false } );
+			this.addControlsArgs.street_view = false;
 		}
 	},
 
@@ -532,29 +546,12 @@ Marker: {
 		var gAnchorPoint = new google.maps.Point(ax,ay);
 
 		if (this.iconUrl) {
- 			options.icon = new google.maps.MarkerImage(
-				this.iconUrl,
-				new google.maps.Size(this.iconSize[0], this.iconSize[1]),
-				new google.maps.Point(0, 0),
-				gAnchorPoint
-			);
-
-			// do we have a Shadow?
-			if (this.iconShadowUrl) {
-				if (this.iconShadowSize) {
-					var x = this.iconShadowSize[0];
-					var y = this.iconShadowSize[1];
-					options.shadow = new google.maps.MarkerImage(
-						this.iconShadowUrl,
-						new google.maps.Size(x,y),
-						new google.maps.Point(0,0),
-						gAnchorPoint 
-					);
-				}
-				else {
-					options.shadow = new google.maps.MarkerImage(this.iconShadowUrl);
-				}
-			}
+ 			options.icon = {
+			    url: this.iconUrl,
+			    scaledSize: new google.maps.Size(this.iconSize[0], this.iconSize[1]),
+			    origin: new google.maps.Point(0, 0),
+			    anchor: gAnchorPoint
+		    };
 		}
 		if (this.draggable) {
 			options.draggable = this.draggable;

@@ -1,10 +1,10 @@
 === Geo Mashup ===
-Contributors: cyberhobo
-Donate Link: https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=11045324
+Contributors: cyberhobo, freemius
+Donate Link:
 Tags: map, maps, google maps, google map, mapping, mashup, geo, google, geocms
 Requires at least: 3.7
-Tested up to: 4.4.2
-Stable tag: 1.8.8
+Tested up to: 4.9.1
+Stable tag: 1.10.2
 License: GPL2+
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -38,29 +38,6 @@ Some popular features are:
 If you need features that are aren't listed here, check 
 [the documentation](https://github.com/cyberhobo/wordpress-geo-mashup/wiki/Getting-Started)
 and the [tag reference](https://github.com/cyberhobo/wordpress-geo-mashup/wiki/Tag-Reference).
-
-= Comparison to Other Mapping Plugins =
-
-Geo Mashup was one of the earliest WordPress mapping plugins, first released
-in 2005. Eventually the author began using it for freelance jobs, which he
-still does. As such Geo Mashup is more tailored to customization and hacking than ease of
-use, but many user-requested features have been
-[released](https://github.com/cyberhobo/wordpress-geo-mashup/issues?utf8=%E2%9C%93&q=is%3Aissue+is%3Aclosed+label%3AType-Enhancement+)
-over the years. Geo Mashup creates three tables to optimize location
-searches.
-
-It's just crazy how many mapping plugins have sprung up since then. If all
-those developers had worked together we'd have just a few much better plugins.
-I've been guilty of not reaching out to other authors. If you are a developer
-interested in working together for a better WordPress mapping future, contact
-me via [my site](http://www.cyberhobo.net/hire-me) and I'll work with you.
-
-= Support =
-
-The author monitors [WP Questions](http://wpquestions.com/affiliates/register/name/cyberhobo),
-and there is a public [Google Group](http://groups.google.com/group/wordpress-geo-mashup-plugin).
-The author doesn't promise free support, but is amenable to questions that contribute something
-to the community.
 
 = Translations =
 
@@ -104,6 +81,30 @@ This version fixes a security related bug.  Upgrade immediately.
 == Change Log ==
 
 Features are generally added in one-dot releases, while two-dot releases contain fixes and small updates.
+
+= 1.10.2 Jan 01 2018 =
+
+[milestone 1.10.2 changes](https://github.com/cyberhobo/wordpress-geo-mashup/milestone/5?closed=1)
+
+= 1.10.1 Jun 18 2017 =
+
+[milestone 1.10.1 changes](https://github.com/cyberhobo/wordpress-geo-mashup/milestone/4?closed=1)
+
+= 1.10.0 Jan 11 2017 =
+
+[milestone 1.10.0 changes](https://github.com/cyberhobo/wordpress-geo-mashup/milestone/3?closed=1)
+
+= 1.9.1 Oct 15 2016 =
+
+[milestone 1.9.1 changes](https://github.com/cyberhobo/wordpress-geo-mashup/milestone/2?closed=1)
+
+= 1.9.0 Sep 22 2016 =
+
+[milestone 1.9.0 changes](https://github.com/cyberhobo/wordpress-geo-mashup/milestone/1?closed=1)
+
+= 1.8.9 Jun 28 2016 =
+
+[milestone 1.8.9 changes](https://github.com/cyberhobo/wordpress-geo-mashup/issues?utf8=%E2%9C%93&q=is%3Aissue+label%3AMilestone-1.8.9)
 
 = 1.8.8 Feb 17 2016 =
 
